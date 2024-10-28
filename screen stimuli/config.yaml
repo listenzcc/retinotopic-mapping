@@ -1,0 +1,27 @@
+project:
+  project: retinotopic mapping
+  application: screen stimuli
+  version: 1.0
+
+display:
+  screenId: 0 # screen id: 0, 1, ...
+  width: 1920 # pixels
+  height: 1080 # pixels
+
+checkbox:
+  colored: false # boolean
+  numInLatitude: 12 # number
+  numInLongitude: 10 # number
+  flickingRate: 10 # Hz
+
+eccentricityMapping:
+  width: 40 # pixels
+  minRadius: 10 # pixels
+  maxRadius: 200 # pixels
+  duration: 40 # seconds
+  repeat: 2 # times
+
+polarAngleMapping:
+  width: 45 # radians
+  duration: 40 # seconds
+  repeat: 2 # times
