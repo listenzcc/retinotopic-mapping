@@ -19,21 +19,40 @@ Functions:
 # %% ---- 2024-10-28 ------------------------
 # Requirements and constants
 import sys
+import argparse
 
 from PyQt6.QtCore import Qt, QTimer
-from util.display import EccentricityMapping
+from util.display import EccentricityMapping, PolarAngleMapping
 from util import logger
 
 
 # %% ---- 2024-10-28 ------------------------
 # Function and class
+parser = argparse.ArgumentParser(
+    description="Retinotopic mapping application.")
+parser.add_argument('-e', '--eccentricity',
+                    help='Use eccentricity mapping', action='store_true')
+parser.add_argument('-p', '--polarAngle',
+                    help='Use polarAngle mapping', action='store_true')
+parser.add_argument('-d', '--debug',
+                    help='Enable debug display', action='store_true')
+namespace = parser.parse_args()
+print(namespace)
 
+assert not all(
+    (namespace.eccentricity, namespace.polarAngle)), 'Can not use both --eccentricity and --polarAngle'
 
 # %% ---- 2024-10-28 ------------------------
 # Play ground
 if __name__ == "__main__":
-    mapping = EccentricityMapping()
+    # Initialize the mapping
+    if namespace.eccentricity:
+        mapping = EccentricityMapping(namespace.debug)
 
+    if namespace.polarAngle:
+        mapping = PolarAngleMapping(namespace.debug)
+
+    # Setup the mapping into the main_loop
     mapping.window.show()
     mapping.main_loop()
 

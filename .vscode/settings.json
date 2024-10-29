@@ -1,6 +1,10 @@
 {
     "cSpell.words": [
+        "astype",
+        "cpam",
+        "dtype",
         "Frameless",
+        "fromarray",
         "loguru",
         "omegaconf",
         "Pixmap",

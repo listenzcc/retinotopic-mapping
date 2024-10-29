@@ -11,17 +11,19 @@ display:
 checkbox:
   colored: false # boolean
   numInLatitude: 12 # number
-  numInLongitude: 10 # number
-  flickingRate: 10 # Hz
+  numInLongitude: 20 # number
+  flickingRate: 0.5 # Hz
 
 eccentricityMapping:
-  width: 40 # pixels
-  minRadius: 10 # pixels
-  maxRadius: 200 # pixels
-  duration: 40 # seconds
+  width: 60 # pixels
+  duration: 10 # seconds
+  minRadius: 20 # pixels
+  maxRadius: 400 # pixels
   repeat: 2 # times
 
 polarAngleMapping:
-  width: 45 # radians
-  duration: 40 # seconds
+  width: 45 # degrees
+  duration: 10 # seconds
+  minRadius: 20 # pixels
+  maxRadius: 400 # pixels
   repeat: 2 # times
