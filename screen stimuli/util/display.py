@@ -37,7 +37,7 @@ from omegaconf import OmegaConf
 from rich import print
 from threading import Thread, RLock
 
-from . import logger, config
+from . import logger, config, current_dir
 
 
 # %% ---- 2024-10-28 ------------------------
@@ -145,6 +145,13 @@ class OnScreenDisplay(object):
         """
         Thread(target=self._main_loop, daemon=True).start()
 
+    def get_running_state(self):
+        return self.running
+
+    def stop_running(self):
+        self.running = False
+        return
+
     def _main_loop(self):
         """
         The main loop for the on-screen display.
@@ -166,15 +173,41 @@ class OnScreenDisplay(object):
         while self.running:
             i += 1
             t = time.time()-tic
+
             # Generate the frame img
             img = self.generate_img(t)
             # Put the img into pixmap
-            with self.acquire_lock():
-                self.pixmap = QPixmap.fromImage(ImageQt(img))
+            if self.running:
+                with self.acquire_lock():
+                    self.pixmap = QPixmap.fromImage(ImageQt(img))
+
+            # ! Sleep or not
             # time.sleep(0.01)
+
             if i % 10 == 0:
                 print(f'Frame rate: {i/t:0.2f}')
+
         logger.debug(f'Stopped running: {loop_id}')
+
+    def place_img(self, img: Image):
+        mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+        mat[:, :, 3] = 255
+        bg = Image.fromarray(mat, mode='RGBA')
+
+        a1 = bg.width / bg.height
+        a2 = img.width / img.height
+
+        # Fit on the height
+        if a1 > a2:
+            img = img.resize((int(bg.height*a2), bg.height))
+            bg.paste(img, (int((bg.width-img.width)/2), 0))
+        # Fit on the width
+        else:
+            img = img.resize((bg.width, int(bg.width/a2)))
+            bg.paste(img, (0, int((bg.height-img.height)/2)))
+        logger.debug(f'Resized img: {img.size}')
+
+        self.pixmap = QPixmap.fromImage(ImageQt(bg))
 
 
 class EccentricityMapping(OnScreenDisplay):
@@ -190,7 +223,14 @@ class EccentricityMapping(OnScreenDisplay):
         class inherits all the attributes and methods of the OnScreenDisplay class.
         """
         super().__init__()
+        self.place_prompt_img()
         self.debug = debug
+
+    def place_prompt_img(self):
+        img = Image.open(
+            current_dir.joinpath(config.prompt.img)).convert('RGBA')
+        self.place_img(img)
+        return
 
     def generate_img(self, t: float) -> Image.Image:
         """
@@ -296,7 +336,14 @@ class EccentricityMapping(OnScreenDisplay):
 class PolarAngleMapping(OnScreenDisplay):
     def __init__(self, debug=False):
         super().__init__()
+        self.place_prompt_img()
         self.debug = debug
+
+    def place_prompt_img(self):
+        img = Image.open(
+            current_dir.joinpath(config.prompt.img)).convert('RGBA')
+        self.place_img(img)
+        return
 
     def generate_img(self, t: float) -> Image.Image:
         # Get the configuration object

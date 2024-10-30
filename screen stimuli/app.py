@@ -23,7 +23,7 @@ import argparse
 
 from PyQt6.QtCore import Qt, QTimer
 from util.display import EccentricityMapping, PolarAngleMapping
-from util import logger
+from util import logger, config
 
 
 # %% ---- 2024-10-28 ------------------------
@@ -36,8 +36,10 @@ parser.add_argument('-p', '--polarAngle',
                     help='Use polarAngle mapping', action='store_true')
 parser.add_argument('-d', '--debug',
                     help='Enable debug display', action='store_true')
+parser.add_argument('-w', '--wait',
+                    help='Wait for start key press', action='store_true')
 namespace = parser.parse_args()
-print(namespace)
+logger.info(f'Using namespace: {namespace}')
 
 assert not all(
     (namespace.eccentricity, namespace.polarAngle)), 'Can not use both --eccentricity and --polarAngle'
@@ -54,7 +56,10 @@ if __name__ == "__main__":
 
     # Setup the mapping into the main_loop
     mapping.window.show()
-    mapping.main_loop()
+
+    # Start the main loop if not waiting for start key press
+    if not namespace.wait:
+        mapping.main_loop()
 
     def _on_timeout():
         mapping.repaint()
@@ -72,9 +77,13 @@ if __name__ == "__main__":
             enum = Qt.Key(key)
             logger.debug(f'Key pressed: {key}, {enum.name}')
 
-            # If esc is pressed, quit the app
-            if enum.name == 'Key_Escape':
+            # The quite key is pressed, quit the app
+            if enum.name == config.control.quitKeyName:
                 mapping.app.quit()
+
+            # The start key is pressed, start the main loop
+            if namespace.wait and enum.name == config.control.startKeyName:
+                mapping.main_loop()
 
         except Exception as err:
             logger.error(f'Key pressed but I got an error: {err}')
@@ -83,6 +92,7 @@ if __name__ == "__main__":
         '''
         Safely quit
         '''
+        mapping.stop_running()
         logger.debug('Safely quit the application')
         return
 
