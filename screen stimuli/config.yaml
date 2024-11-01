@@ -11,13 +11,13 @@ display:
   height: 600
 
 prompt:
-  img: img/demo.jpg
+  img: img/prompt.jpg
 
 control:
   quitKeyName: Key_Escape
   startKeyName: Key_S
 
-checkbox:
+checkboxTexture:
   colored: false # boolean
   numInLatitude: 12 # number
   numInLongitude: 20 # number

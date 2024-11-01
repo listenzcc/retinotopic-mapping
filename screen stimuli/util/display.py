@@ -20,25 +20,21 @@ Functions:
 # Requirements and constants
 import sys
 import time
-import itertools
 import contextlib
 
 import numpy as np
 
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMainWindow, QApplication, QLabel
 
-from pathlib import Path
-from omegaconf import OmegaConf
 from rich import print
 from threading import Thread, RLock
 
 from . import logger, config, current_dir
-
 
 # %% ---- 2024-10-28 ------------------------
 # Function and class
@@ -165,6 +161,9 @@ class OnScreenDisplay(object):
         Returns:
         None
         """
+        report_interval = 2  # seconds
+        next_report_time = report_interval  # seconds
+
         self.running = True
         tic = time.time()
         i = 0
@@ -184,8 +183,10 @@ class OnScreenDisplay(object):
             # ! Sleep or not
             # time.sleep(0.01)
 
-            if i % 10 == 0:
+            # Report frame rate
+            if t > next_report_time:
                 print(f'Frame rate: {i/t:0.2f}')
+                next_report_time += next_report_time
 
         logger.debug(f'Stopped running: {loop_id}')
 
@@ -248,7 +249,7 @@ class EccentricityMapping(OnScreenDisplay):
         """
         # Get the configuration object
         cem = config.eccentricityMapping
-        ccb = config.checkbox
+        ccb = config.checkboxTexture
 
         # The r_center is the center of the ring.
         # The r_min, r_max is the inner and outer boundaries.
@@ -348,7 +349,7 @@ class PolarAngleMapping(OnScreenDisplay):
     def generate_img(self, t: float) -> Image.Image:
         # Get the configuration object
         cpam = config.polarAngleMapping
-        ccb = config.checkbox
+        ccb = config.checkboxTexture
 
         # The a_center is the center of the spin.
         # The a_min, a_max are the front and back boundaries.

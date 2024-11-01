@@ -1,0 +1,40 @@
+project:
+  project: retinotopic mapping
+  application: sequence stimuli
+  version: 1.0
+
+display:
+  screenId: 0 # screen id: 0, 1, ...
+  # width: 1920 # pixels
+  # height: 1080 # pixels
+  width: 800
+  height: 600
+
+imgSize:
+  width: 400 # pixels
+  height: 400 # pixels
+
+extensions:
+  - .jpg
+  - .png
+
+prompt:
+  img: img/prompt.jpg
+
+control:
+  quitKeyName: Key_Escape
+  startKeyName: Key_S
+
+imgSequence:
+  directory: <home>/Pictures/Snipaste
+  num: 100
+  paddingBefore: 2 # seconds
+  paddingAfter: 2 # seconds
+  duration: 4 # seconds
+
+focusPoint:
+  width: 10 # pixels
+  height: 10 # pixels
+  alpha: 0.8 # alpha
+  changeRate: 0.1 # times per second
+
