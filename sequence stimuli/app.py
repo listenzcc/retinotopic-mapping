@@ -40,7 +40,7 @@ logger.info(f'Using namespace: {namespace}')
 # %% ---- 2024-11-01 ------------------------
 # Play ground
 if __name__ == "__main__":
-    stimuli = SequenceStimuli()
+    stimuli = SequenceStimuli(namespace.debug)
 
     # Setup the mapping into the main_loop
     stimuli.window.show()

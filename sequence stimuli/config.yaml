@@ -33,8 +33,11 @@ imgSequence:
   duration: 4 # seconds
 
 focusPoint:
-  width: 10 # pixels
-  height: 10 # pixels
-  alpha: 0.8 # alpha
+  toggled: true
+  radius: 5 # pixels
+  alpha: 200 # alpha
   changeRate: 0.1 # times per second
-
+  colors:
+    - "#A00A"
+    - "#0A0A"
+    - "#00AA"

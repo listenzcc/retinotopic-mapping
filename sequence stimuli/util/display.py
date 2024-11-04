@@ -307,6 +307,29 @@ class SequenceStimuli(OnScreenDisplay):
         # Put the img on the top of bg_img.
         # the mask is used for alpha transparency
         img = Image.composite(img, bg_img, mask=img)
+        draw = ImageDraw.Draw(img)
+
+        if config.focusPoint.toggled:
+            radius = config.focusPoint.radius
+            color = config.focusPoint.colors[0]
+            box = (
+                self.width//2-radius, self.height//2-radius, self.width//2+radius, self.height//2+radius)
+            draw.ellipse(box, fill=color)
+
+        # Display the progress bar
+        if self.debug:
+            tt = t % self.trial_length
+            r1 = tt / self.trial_length
+
+            draw.rectangle(
+                (0, 0, self.width*r1, 10), outline='#D0104C')
+
+            if tt > self.t1:
+                r21 = self.t1 / self.trial_length
+                r22 = min(tt, self.t2) / self.trial_length
+                draw.rectangle(
+                    (self.width*r21, 0, self.width*r22, 10), fill='#D0104C')
+
         return img
 
 
