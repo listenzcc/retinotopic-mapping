@@ -225,7 +225,38 @@ class EccentricityMapping(OnScreenDisplay):
         """
         super().__init__()
         self.place_prompt_img()
+        self.change_focus_color()
         self.debug = debug
+
+    def change_focus_color(self, t: float = 0) -> str:
+        """
+        Change the color of the focus point for the next trial.
+
+        This function randomly selects a new color from the list of available colors,
+        updates the next time point for color change, and logs the color change.
+
+        It also ensures that the changed color is different from the current one.
+
+        Parameters:
+            t (float): The current time point in the sequence stimuli. Default is 0.
+
+        Returns:
+            str: The color of the focus point after the change.
+        """
+        d = np.random.uniform(config.focusPoint.tMin, config.focusPoint.tMax)
+        self.t_next_change_focus_color = t+d
+
+        c = config.focusPoint.colors.pop(0)
+        np.random.shuffle(config.focusPoint.colors)
+        config.focusPoint.colors.append(c)
+
+        logger.debug(
+            f'Changed focus point color from {c} to {config.focusPoint.colors[0]}')
+
+        logger.debug(
+            f'Next focus point color changing dues to {t} -> {self.t_next_change_focus_color}')
+
+        return config.focusPoint.colors[0]
 
     def place_prompt_img(self):
         img = Image.open(
@@ -318,18 +349,30 @@ class EccentricityMapping(OnScreenDisplay):
                     box, start=angle, end=angle+arc_length, width=w, fill=fill)
 
         if self.debug:
+            color = config.colors.debugColor
             box = (cx-r_center, cy-r_center, cx+r_center, cy+r_center)
             draw.arc(
-                box, start=0, end=360, width=2, fill=(255, 0, 0, 255))
+                box, start=0, end=360, width=2, fill=color)
 
             if r_min > 0:
                 box = (cx-r_min, cy-r_min, cx+r_min, cy+r_min)
                 draw.arc(
-                    box, start=0, end=360, width=2, fill=(0, 255, 0, 255))
+                    box, start=0, end=360, width=2, fill=color)
 
             box = (cx-r_max, cy-r_max, cx+r_max, cy+r_max)
             draw.arc(
-                box, start=0, end=360, width=2, fill=(0, 255, 0, 255))
+                box, start=0, end=360, width=2, fill=color)
+
+        # Put the focus point on the center
+        if config.focusPoint.toggled:
+            if t > self.t_next_change_focus_color:
+                self.change_focus_color(t)
+
+            radius = config.focusPoint.radius
+            color = config.focusPoint.colors[0]
+            box = (
+                self.width//2-radius, self.height//2-radius, self.width//2+radius, self.height//2+radius)
+            draw.ellipse(box, fill=color)
 
         return img
 
@@ -338,7 +381,38 @@ class PolarAngleMapping(OnScreenDisplay):
     def __init__(self, debug=False):
         super().__init__()
         self.place_prompt_img()
+        self.change_focus_color()
         self.debug = debug
+
+    def change_focus_color(self, t: float = 0) -> str:
+        """
+        Change the color of the focus point for the next trial.
+
+        This function randomly selects a new color from the list of available colors,
+        updates the next time point for color change, and logs the color change.
+
+        It also ensures that the changed color is different from the current one.
+
+        Parameters:
+            t (float): The current time point in the sequence stimuli. Default is 0.
+
+        Returns:
+            str: The color of the focus point after the change.
+        """
+        d = np.random.uniform(config.focusPoint.tMin, config.focusPoint.tMax)
+        self.t_next_change_focus_color = t+d
+
+        c = config.focusPoint.colors.pop(0)
+        np.random.shuffle(config.focusPoint.colors)
+        config.focusPoint.colors.append(c)
+
+        logger.debug(
+            f'Changed focus point color from {c} to {config.focusPoint.colors[0]}')
+
+        logger.debug(
+            f'Next focus point color changing dues to {t} -> {self.t_next_change_focus_color}')
+
+        return config.focusPoint.colors[0]
 
     def place_prompt_img(self):
         img = Image.open(
@@ -423,7 +497,18 @@ class PolarAngleMapping(OnScreenDisplay):
 
             if self.debug:
                 draw.arc(
-                    box, start=a_min, end=a_max, width=2, fill=(255, 0, 0, 255))
+                    box, start=a_min, end=a_max, width=2, fill=config.colors.debugColor)
+
+        # Put the focus point on the center
+        if config.focusPoint.toggled:
+            if t > self.t_next_change_focus_color:
+                self.change_focus_color(t)
+
+            radius = config.focusPoint.radius
+            color = config.focusPoint.colors[0]
+            box = (
+                self.width//2-radius, self.height//2-radius, self.width//2+radius, self.height//2+radius)
+            draw.ellipse(box, fill=color)
 
         return img
 

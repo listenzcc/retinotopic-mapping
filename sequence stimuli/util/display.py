@@ -225,7 +225,38 @@ class SequenceStimuli(OnScreenDisplay):
         self.read_images()
         self.place_prompt_img()
         self.setup()
+        self.change_focus_color()
         self.debug = debug
+
+    def change_focus_color(self, t: float = 0) -> str:
+        """
+        Change the color of the focus point for the next trial.
+
+        This function randomly selects a new color from the list of available colors,
+        updates the next time point for color change, and logs the color change.
+
+        It also ensures that the changed color is different from the current one.
+
+        Parameters:
+            t (float): The current time point in the sequence stimuli. Default is 0.
+
+        Returns:
+            str: The color of the focus point after the change.
+        """
+        d = np.random.uniform(config.focusPoint.tMin, config.focusPoint.tMax)
+        self.t_next_change_focus_color = t+d
+
+        c = config.focusPoint.colors.pop(0)
+        np.random.shuffle(config.focusPoint.colors)
+        config.focusPoint.colors.append(c)
+
+        logger.debug(
+            f'Changed focus point color from {c} to {config.focusPoint.colors[0]}')
+
+        logger.debug(
+            f'Next focus point color changing dues to {t} -> {self.t_next_change_focus_color}')
+
+        return config.focusPoint.colors[0]
 
     def place_prompt_img(self):
         img = Image.open(
@@ -234,11 +265,19 @@ class SequenceStimuli(OnScreenDisplay):
         return
 
     def setup(self):
+        '''
+        Setup the time points for displaying the image.
+        The on(+) and off(_) times of the image is as following:
+
+        0 -> t1 --------> t2 -> trial_length
+        ______/+++++++++++\______
+
+        '''
         cis = config.imgSequence
         self.trial_length = cis.paddingBefore + cis.paddingAfter + cis.duration
         self.t1 = cis.paddingBefore
         self.t2 = cis.paddingBefore + cis.duration
-        # Start from the -1, it increases as the display goes
+        # Start the index of the image from the -1, it increases as the display goes
         self.idx = -1
         return
 
@@ -262,7 +301,7 @@ class SequenceStimuli(OnScreenDisplay):
     def read_images(self):
         # Read the images from directory
         directory = Path(config.imgSequence.directory.replace(
-            '<home>', os.environ.get('USERPROFILE')))
+            '<<home>>', os.environ.get('USERPROFILE')))
         files = [
             p for p in directory.iterdir()
             if any(p.name.endswith(e) for e in config.extensions)]
@@ -287,6 +326,8 @@ class SequenceStimuli(OnScreenDisplay):
         return
 
     def generate_img(self, t: float) -> Image.Image:
+        '''Implementation of the generate_img method'''
+
         idx = int(t // self.trial_length)
 
         # Generate the image and its drawing context.
@@ -309,26 +350,31 @@ class SequenceStimuli(OnScreenDisplay):
         img = Image.composite(img, bg_img, mask=img)
         draw = ImageDraw.Draw(img)
 
-        if config.focusPoint.toggled:
-            radius = config.focusPoint.radius
-            color = config.focusPoint.colors[0]
-            box = (
-                self.width//2-radius, self.height//2-radius, self.width//2+radius, self.height//2+radius)
-            draw.ellipse(box, fill=color)
-
-        # Display the progress bar
+        # Debug display
         if self.debug:
+            # Display the progress bar
             tt = t % self.trial_length
             r1 = tt / self.trial_length
 
             draw.rectangle(
-                (0, 0, self.width*r1, 10), outline='#D0104C')
+                (0, 0, self.width*r1, 10), outline=config.colors.debugColor)
 
             if tt > self.t1:
                 r21 = self.t1 / self.trial_length
                 r22 = min(tt, self.t2) / self.trial_length
                 draw.rectangle(
-                    (self.width*r21, 0, self.width*r22, 10), fill='#D0104C')
+                    (self.width*r21, 0, self.width*r22, 10), fill=config.colors.debugColor)
+
+        # Put the focus point on the center
+        if config.focusPoint.toggled:
+            if t > self.t_next_change_focus_color:
+                self.change_focus_color(t)
+
+            radius = config.focusPoint.radius
+            color = config.focusPoint.colors[0]
+            box = (
+                self.width//2-radius, self.height//2-radius, self.width//2+radius, self.height//2+radius)
+            draw.ellipse(box, fill=color)
 
         return img
 

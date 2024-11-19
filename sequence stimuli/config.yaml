@@ -26,7 +26,7 @@ control:
   startKeyName: Key_S
 
 imgSequence:
-  directory: <home>/Pictures/Snipaste
+  directory: <<home>>/Pictures/Snipaste
   num: 100
   paddingBefore: 2 # seconds
   paddingAfter: 2 # seconds
@@ -36,8 +36,12 @@ focusPoint:
   toggled: true
   radius: 5 # pixels
   alpha: 200 # alpha
-  changeRate: 0.1 # times per second
+  tMin: 5
+  tMax: 10
   colors:
     - "#A00A"
     - "#0A0A"
     - "#00AA"
+
+colors:
+  debugColor: "#D0104C"
