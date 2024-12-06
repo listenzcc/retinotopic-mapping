@@ -5,10 +5,10 @@ project:
 
 display:
   screenId: 0 # screen id: 0, 1, ...
-  # width: 1920 # pixels
-  # height: 1080 # pixels
-  width: 800
-  height: 600
+  width: 1920 # pixels
+  height: 1080 # pixels
+  # width: 800
+  # height: 600
 
 prompt:
   img: img/prompt.jpg
