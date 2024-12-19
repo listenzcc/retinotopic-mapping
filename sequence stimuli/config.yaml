@@ -26,11 +26,9 @@ control:
   startKeyName: Key_S
 
 imgSequence:
-  directory: <<home>>/Pictures/Snipaste
-  num: 100
-  paddingBefore: 2 # seconds
-  paddingAfter: 2 # seconds
-  duration: 4 # seconds
+  paddingBefore: 0 # seconds
+  paddingAfter: 1 # seconds
+  duration: 3 # seconds
 
 focusPoint:
   toggled: true

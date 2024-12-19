@@ -18,6 +18,7 @@ Functions:
 
 # %% ---- 2024-11-01 ------------------------
 # Requirements and constants
+import pandas as pd
 import os
 import sys
 import time
@@ -36,15 +37,16 @@ from rich import print
 from pathlib import Path
 from threading import Thread, RLock
 
-from . import logger, config, current_dir
+from . import logger, CONFIG, current_dir
+from .mk_sequence_from_dataframe_nsd import mk_sequence_from_dataframe_nsd
 
 # %% ---- 2024-11-01 ------------------------
 # Function and class
 app = QApplication(sys.argv)
 logger.debug(f'App: {app}')
 
-screen = app.screens()[config.display.screenId]
-logger.debug(f'Screen: {config.display.screenId}: {screen}, {screen.size()}')
+screen = app.screens()[CONFIG.display.screenId]
+logger.debug(f'Screen: {CONFIG.display.screenId}: {screen}, {screen.size()}')
 
 
 class OnScreenDisplay(object):
@@ -55,8 +57,8 @@ class OnScreenDisplay(object):
     pixmap_container = QLabel(window)
     pixmap = None
 
-    width = config.display.width
-    height = config.display.height
+    width = CONFIG.display.width
+    height = CONFIG.display.height
 
     running = False
 
@@ -214,7 +216,10 @@ class OnScreenDisplay(object):
 
 
 class SequenceStimuli(OnScreenDisplay):
-    def __init__(self, debug=False):
+    images_df: pd.DataFrame
+    image_mode: str
+
+    def __init__(self, images_df: pd.DataFrame, image_mode: str, debug=False):
         """
         Initialize the EccentricityMapping class, which inherits from OnScreenDisplay.
 
@@ -222,6 +227,8 @@ class SequenceStimuli(OnScreenDisplay):
         It does not take any parameters and does not return any value.
         """
         super().__init__()
+        self.images_df = images_df
+        self.image_mode = image_mode
         self.read_images()
         self.place_prompt_img()
         self.setup()
@@ -243,24 +250,24 @@ class SequenceStimuli(OnScreenDisplay):
         Returns:
             str: The color of the focus point after the change.
         """
-        d = np.random.uniform(config.focusPoint.tMin, config.focusPoint.tMax)
+        d = np.random.uniform(CONFIG.focusPoint.tMin, CONFIG.focusPoint.tMax)
         self.t_next_change_focus_color = t+d
 
-        c = config.focusPoint.colors.pop(0)
-        np.random.shuffle(config.focusPoint.colors)
-        config.focusPoint.colors.append(c)
+        c = CONFIG.focusPoint.colors.pop(0)
+        np.random.shuffle(CONFIG.focusPoint.colors)
+        CONFIG.focusPoint.colors.append(c)
 
         logger.debug(
-            f'Changed focus point color from {c} to {config.focusPoint.colors[0]}')
+            f'Changed focus point color from {c} to {CONFIG.focusPoint.colors[0]}')
 
         logger.debug(
             f'Next focus point color changing dues to {t} -> {self.t_next_change_focus_color}')
 
-        return config.focusPoint.colors[0]
+        return CONFIG.focusPoint.colors[0]
 
     def place_prompt_img(self):
         img = Image.open(
-            current_dir.joinpath(config.prompt.img)).convert('RGBA')
+            current_dir.joinpath(CONFIG.prompt.img)).convert('RGBA')
         self.place_img(img)
         return
 
@@ -273,7 +280,7 @@ class SequenceStimuli(OnScreenDisplay):
         ______/+++++++++++\______
 
         '''
-        cis = config.imgSequence
+        cis = CONFIG.imgSequence
         self.trial_length = cis.paddingBefore + cis.paddingAfter + cis.duration
         self.t1 = cis.paddingBefore
         self.t2 = cis.paddingBefore + cis.duration
@@ -299,54 +306,80 @@ class SequenceStimuli(OnScreenDisplay):
             return np.ceil(a*255).astype(np.uint8)
 
     def read_images(self):
-        # Read the images from directory
-        directory = Path(config.imgSequence.directory.replace(
-            '<<home>>', os.environ.get('USERPROFILE')))
-        files = [
-            p for p in directory.iterdir()
-            if any(p.name.endswith(e) for e in config.extensions)]
-        imgs = [Image.open(p) for p in files]
-        names = [p.name for p in files]
+        # Read the images
+        paths = mk_sequence_from_dataframe_nsd(self.images_df, self.image_mode)
+        imgs = [Image.open(p) for p in paths]
+        names = ['{}-{}'.format(self.image_mode, p.name) for p in paths]
 
         # Resize the images
-        size = (config.imgSize.width, config.imgSize.height)
-        size = (self.width, self.height)
+        size = (CONFIG.imgSize.width, CONFIG.imgSize.height)
+        # size = (self.width, self.height)
         imgs = [e.resize((size)) for e in imgs]
 
         # Convert the images to 'RGBA'
         imgs = [e.convert('RGBA') for e in imgs]
 
-        # Record
+        # Remember the images and names.
         self.imgs = imgs
         self.names = names
 
+        # Compute the img_offsets.
+        # It is the left-top coordinate of the image inside the screen.
+        # It keeps the image always in the center of the screen.
+        self.img_offsets = ((self.width-CONFIG.imgSize.width)//2,
+                            (self.height-CONFIG.imgSize.height)//2)
+
         # Report
-        logger.debug(f'Read images({len(imgs)}) from {directory}')
+        logger.debug(f'Read images({len(imgs)})')
         logger.debug(f'The images are {names}')
         return
 
     def generate_img(self, t: float) -> Image.Image:
         '''Implementation of the generate_img method'''
 
+        # ? Maybe setup with
+        background_rgba = 100
+
+        # Check the experiment progress.
         idx = int(t // self.trial_length)
 
-        # Generate the image and its drawing context.
-        # The initializing color is (0, 0, 0, 0) for all the pixels
-        mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        bg_img = Image.fromarray(mat.astype(np.uint8)+100, mode='RGBA')
+        def get_and_prepare_img(idx, t):
+            # Get the image and its name.
+            img = self.imgs[idx % len(self.imgs)].copy()
+            name = self.names[idx % len(self.names)]
 
-        img = self.imgs[idx % len(self.imgs)].copy()
-        name = self.names[idx % len(self.names)]
+            # Trigger it out when the image displays on the screen.
+            if idx > self.idx:
+                self.idx = idx
+                logger.debug(f'Display img: {idx} | {name}')
 
-        if idx > self.idx:
-            self.idx = idx
-            logger.debug(f'Display img: {idx} | {name}')
+            # Get and set the img's alpha channel.
+            alpha = self.get_alpha(t)
+            img.putalpha(alpha)
 
-        alpha = self.get_alpha(t)
-        img.putalpha(alpha)
+            # Paste the image into the center.
+            mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+            img_backer = Image.fromarray(mat.astype(
+                np.uint8)+background_rgba, mode='RGBA')
+            img_backer.paste(img, self.img_offsets)
 
-        # Put the img on the top of bg_img.
-        # the mask is used for alpha transparency
+            return img_backer, name
+
+        def mk_bg_img():
+            # Generate the image and its drawing context.
+            # The initializing color is (0, 0, 0, 0) for all the pixels
+            mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+            bg_img = Image.fromarray(mat.astype(
+                np.uint8)+background_rgba, mode='RGBA')
+            return bg_img
+
+        # Get the img and its background img
+        img, name = get_and_prepare_img(idx, t)
+        bg_img = mk_bg_img()
+
+        # Put the img on the top of bg_img,
+        # by compositing img and bg_img, the mask is img.
+        # So, the mask is used for alpha transparency.
         img = Image.composite(img, bg_img, mask=img)
         draw = ImageDraw.Draw(img)
 
@@ -357,21 +390,21 @@ class SequenceStimuli(OnScreenDisplay):
             r1 = tt / self.trial_length
 
             draw.rectangle(
-                (0, 0, self.width*r1, 10), outline=config.colors.debugColor)
+                (0, 0, self.width*r1, 10), outline=CONFIG.colors.debugColor)
 
             if tt > self.t1:
                 r21 = self.t1 / self.trial_length
                 r22 = min(tt, self.t2) / self.trial_length
                 draw.rectangle(
-                    (self.width*r21, 0, self.width*r22, 10), fill=config.colors.debugColor)
+                    (self.width*r21, 0, self.width*r22, 10), fill=CONFIG.colors.debugColor)
 
         # Put the focus point on the center
-        if config.focusPoint.toggled:
+        if CONFIG.focusPoint.toggled:
             if t > self.t_next_change_focus_color:
                 self.change_focus_color(t)
 
-            radius = config.focusPoint.radius
-            color = config.focusPoint.colors[0]
+            radius = CONFIG.focusPoint.radius
+            color = CONFIG.focusPoint.colors[0]
             box = (
                 self.width//2-radius, self.height//2-radius, self.width//2+radius, self.height//2+radius)
             draw.ellipse(box, fill=color)

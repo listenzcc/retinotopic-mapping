@@ -20,10 +20,11 @@ Functions:
 # Requirements and constants
 import sys
 import argparse
+import pandas as pd
 
 from PyQt6.QtCore import Qt, QTimer
 from util.display import SequenceStimuli
-from util import logger, config
+from util import logger, CONFIG
 
 
 # %% ---- 2024-11-01 ------------------------
@@ -34,13 +35,19 @@ parser.add_argument('-d', '--debug',
                     help='Enable debug display', action='store_true')
 parser.add_argument('-w', '--wait',
                     help='Wait for start key press', action='store_true')
+parser.add_argument('-j', '--dataFrameJson',
+                    help='The json of dataFrame of stimuli images', type=str, required=True)
+parser.add_argument('-m', '--mode',
+                    help='The mode of the image, colorful or hed', type=str, required=True)
 namespace = parser.parse_args()
 logger.info(f'Using namespace: {namespace}')
 
 # %% ---- 2024-11-01 ------------------------
 # Play ground
 if __name__ == "__main__":
-    stimuli = SequenceStimuli(namespace.debug)
+    df: pd.DataFrame = pd.read_json(namespace.dataFrameJson)
+    mode: str = namespace.mode
+    stimuli = SequenceStimuli(df, mode, namespace.debug)
 
     # Setup the mapping into the main_loop
     stimuli.window.show()
@@ -65,11 +72,11 @@ if __name__ == "__main__":
             logger.debug(f'Key pressed: {key}, {enum.name}')
 
             # The quite key is pressed, quit the app
-            if enum.name == config.control.quitKeyName:
+            if enum.name == CONFIG.control.quitKeyName:
                 stimuli.app.quit()
 
             # The start key is pressed, start the main loop
-            if namespace.wait and enum.name == config.control.startKeyName:
+            if namespace.wait and enum.name == CONFIG.control.startKeyName:
                 stimuli.main_loop()
 
         except Exception as err:

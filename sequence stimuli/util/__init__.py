@@ -28,8 +28,8 @@ current_dir = Path(sys.argv[0]).parent
 logger.add(current_dir.joinpath('log/sequence stimuli.log'), rotation='5MB')
 logger.info(f'Running in current directory: {current_dir}')
 
-config = OmegaConf.load(current_dir.joinpath('config.yaml'))
-logger.debug(f'Using config: {config}')
+CONFIG = OmegaConf.load(current_dir.joinpath('config.yaml'))
+logger.debug(f'Using config: {CONFIG}')
 
 # %% ---- 2024-11-01 ------------------------
 # Function and class
