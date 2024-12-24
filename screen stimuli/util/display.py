@@ -139,7 +139,12 @@ class OnScreenDisplay(object):
         Returns:
         None
         """
+        # If it is already running, doing nothing.
+        if self.running:
+            logger.warning('The loop is already running.')
+            return
         Thread(target=self._main_loop, daemon=True).start()
+        return
 
     def get_running_state(self):
         return self.running
@@ -168,13 +173,14 @@ class OnScreenDisplay(object):
         tic = time.time()
         i = 0
         loop_id = f'Loop-{np.random.random():.4f}-{time.time():.8f}'
-        logger.debug(f'Start running: {loop_id}')
+        logger.info(f'Start running: {loop_id}')
         while self.running:
             i += 1
             t = time.time()-tic
 
-            # Generate the frame img
-            img = self.generate_img(t)
+            # Generate the frame img.
+            # The ring animation starts at the offset by seconds.
+            img = self.generate_img(t-config.temporalDesign.startOffset)
             # Put the img into pixmap
             if self.running:
                 with self.acquire_lock():
@@ -212,6 +218,8 @@ class OnScreenDisplay(object):
 
 
 class EccentricityMapping(OnScreenDisplay):
+    circles = 0
+
     def __init__(self, debug=False):
         """
         Initialize the EccentricityMapping class, which inherits from OnScreenDisplay.
@@ -282,86 +290,101 @@ class EccentricityMapping(OnScreenDisplay):
         cem = config.eccentricityMapping
         ccb = config.checkboxTexture
 
-        # The r_center is the center of the ring.
-        # The r_min, r_max is the inner and outer boundaries.
-        r_center = cem.minRadius + ((t % cem.duration) / cem.duration) * \
-            (cem.maxRadius - cem.minRadius)
-        r_max = r_center + cem.width/2
-        r_min = r_center - cem.width/2
-
         # Generate the image and its drawing context.
         # The initializing color is (0, 0, 0, 0) for all the pixels
         mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        img = Image.fromarray(mat.astype(np.uint8)+100, mode='RGBA')
+        mat[:, :] = cem.background
+        img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
         draw = ImageDraw.Draw(img)
 
-        # The current color value (v) of sin functional,
-        # and u is its reverse
-        v = np.uint8((np.sin(ccb.flickingRate*t*np.pi*2)+1)*0.5*255)
-        u = np.uint8(255-v)
+        def draw_ring():
+            '''Draw the ring at the time (t).'''
+            # The r_center is the center of the ring.
+            # The r_min, r_max is the inner and outer boundaries.
+            r_center = cem.minRadius + ((t % cem.duration) / cem.duration) * \
+                (cem.maxRadius - cem.minRadius)
+            r_max = r_center + cem.width/2
+            r_min = r_center - cem.width/2
 
-        # Center of the ring
-        cx = self.width / 2
-        cy = self.height / 2
+            # The current color value (v) of sin functional,
+            # and u is its reverse
+            sin = np.sin(ccb.flickingRate*t*np.pi*2)
+            v = np.uint8((np.abs(np.power(sin, 1))*np.sign(sin)+1)*0.5*255)
+            u = np.uint8(255-v)
 
-        # The arc block size.
-        # Think it as the earth, the arc blocks are segmented by the longitude and latitude.
-        arc_length = 360 / ccb.numInLongitude
-        arc_width = (cem.maxRadius - cem.minRadius) / ccb.numInLatitude
+            # Center of the ring
+            cx = self.width / 2
+            cy = self.height / 2
 
-        # The draw.arc box means the ring NEVER exceed the box,
-        # or, the arc_width grows inside.
-        # The r refers the bounding box size of the "narrow" arc block.
-        # The angle refers the start angle of the arc block.
-        for j, r in enumerate(np.linspace(cem.minRadius, cem.maxRadius+arc_width*2, 2+ccb.numInLatitude, endpoint=False)):
-            # Not draw if the r is small and outside the ring range.
-            if r < r_min:
-                continue
+            # The arc block size.
+            # Think it as the earth, the arc blocks are segmented by the longitude and latitude.
+            arc_length = 360 / ccb.numInLongitude
+            arc_width = (cem.maxRadius - cem.minRadius) / ccb.numInLatitude
 
-            # Not draw if the r is large and outside the ring range.
-            if r-arc_width > r_max:
-                continue
+            # The draw.arc box means the ring NEVER exceed the box,
+            # or, the arc_width grows inside.
+            # The r refers the bounding box size of the "narrow" arc block.
+            # The angle refers the start angle of the arc block.
+            for j, r in enumerate(np.linspace(cem.minRadius, cem.maxRadius+arc_width*2, 2+ccb.numInLatitude, endpoint=False)):
+                # Not draw if the r is small and outside the ring range.
+                if r < r_min:
+                    continue
 
-            # Initialize as the NORMAL condition
-            w = arc_width
-            box = (cx-r, cy-r, cx+r, cy+r)
+                # Not draw if the r is large and outside the ring range.
+                if r-arc_width > r_max:
+                    continue
 
-            # Shrink the width in the most inner blocks
-            if r - arc_width < r_min:
-                w = r - r_min
-            # Shrink the width and shrink the box in the most outer blocks.
-            # Restrict the s + w = arc_width to prevent blinking the edge.
-            elif r > r_max and r-arc_width < r_max:
-                w = int(arc_width-(r-r_max))
-                s = arc_width - w
-                box = (cx-r+s, cy-r+s, cx+r-s, cy+r-s)
+                # Initialize as the NORMAL condition
+                w = arc_width
+                box = (cx-r, cy-r, cx+r, cy+r)
 
-            # Safely convert the width (w)
-            w = int(w)
+                # Shrink the width in the most inner blocks
+                if r - arc_width < r_min:
+                    w = r - r_min
+                # Shrink the width and shrink the box in the most outer blocks.
+                # Restrict the s + w = arc_width to prevent blinking the edge.
+                elif r > r_max and r-arc_width < r_max:
+                    w = int(arc_width-(r-r_max))
+                    s = arc_width - w
+                    box = (cx-r+s, cy-r+s, cx+r-s, cy+r-s)
 
-            # Draw the arc blocks one-by-one with DIFFERENT colors
-            for i, angle in enumerate(np.linspace(0, 360, ccb.numInLongitude, endpoint=False)):
-                if i % 2 == j % 2:
-                    fill = (v, v, v, 255)
-                else:
-                    fill = (u, u, u, 255)
-                draw.arc(
-                    box, start=angle, end=angle+arc_length, width=w, fill=fill)
+                # Safely convert the width (w)
+                w = int(w)
 
-        if self.debug:
-            color = config.colors.debugColor
-            box = (cx-r_center, cy-r_center, cx+r_center, cy+r_center)
-            draw.arc(
-                box, start=0, end=360, width=2, fill=color)
+                # Draw the arc blocks one-by-one with DIFFERENT colors
+                for i, angle in enumerate(np.linspace(0, 360, ccb.numInLongitude, endpoint=False)):
+                    if i % 2 == j % 2:
+                        fill = (v, v, v, 255)
+                    else:
+                        fill = (u, u, u, 255)
+                    draw.arc(
+                        box, start=angle, end=angle+arc_length, width=w, fill=fill)
 
-            if r_min > 0:
-                box = (cx-r_min, cy-r_min, cx+r_min, cy+r_min)
+            # Draw the debug curves.
+            if self.debug:
+                color = config.colors.debugColor
+                box = (cx-r_center, cy-r_center, cx+r_center, cy+r_center)
                 draw.arc(
                     box, start=0, end=360, width=2, fill=color)
 
-            box = (cx-r_max, cy-r_max, cx+r_max, cy+r_max)
-            draw.arc(
-                box, start=0, end=360, width=2, fill=color)
+                if r_min > 0:
+                    box = (cx-r_min, cy-r_min, cx+r_min, cy+r_min)
+                    draw.arc(
+                        box, start=0, end=360, width=2, fill=color)
+
+                box = (cx-r_max, cy-r_max, cx+r_max, cy+r_max)
+                draw.arc(
+                    box, start=0, end=360, width=2, fill=color)
+                return
+
+        if t > 0:
+            # Report if the new circles is started.
+            circles = int(np.ceil(t / cem.duration))
+            if circles > self.circles:
+                self.circles = circles
+                logger.info(f'Circles changed to {self.circles}')
+            # Draw the ring.
+            draw_ring()
 
         # Put the focus point on the center
         if config.focusPoint.toggled:
@@ -378,6 +401,8 @@ class EccentricityMapping(OnScreenDisplay):
 
 
 class PolarAngleMapping(OnScreenDisplay):
+    circles = 0
+
     def __init__(self, debug=False):
         super().__init__()
         self.place_prompt_img()
@@ -425,79 +450,95 @@ class PolarAngleMapping(OnScreenDisplay):
         cpam = config.polarAngleMapping
         ccb = config.checkboxTexture
 
-        # The a_center is the center of the spin.
-        # The a_min, a_max are the front and back boundaries.
-        a_center = ((t % cpam.duration)/cpam.duration) * 360
-        a_min = a_center - cpam.width/2
-        a_max = a_center + cpam.width/2
-
         # Generate the image and its drawing context.
         # The initializing color is (0, 0, 0, 0) for all the pixels
         mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        img = Image.fromarray(mat.astype(np.uint8)+100, mode='RGBA')
+        mat[:, :] = cpam.background
+        img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
         draw = ImageDraw.Draw(img)
 
-        # The current color value (v) of sin functional,
-        # and u is its reverse
-        v = np.uint8((np.sin(ccb.flickingRate*t*np.pi*2)+1)*0.5*255)
-        u = np.uint8(255-v)
+        def draw_polar():
+            '''Draw the polar at the time (t).'''
+            # The a_center is the center of the spin.
+            # The a_min, a_max are the front and back boundaries.
+            a_center = ((t % cpam.duration)/cpam.duration) * 360
+            a_min = a_center - cpam.width/2
+            a_max = a_center + cpam.width/2
 
-        # Center of the ring
-        cx = self.width / 2
-        cy = self.height / 2
+            # The current color value (v) of sin functional,
+            # and u is its reverse
+            sin = np.sin(ccb.flickingRate*t*np.pi*2)
+            v = np.uint8((np.abs(np.power(sin, 1))*np.sign(sin)+1)*0.5*255)
+            u = np.uint8(255-v)
 
-        # The arc block size
-        # Think it as the earth, the arc blocks are segmented by the longitude and latitude.
-        arc_length = 360 / ccb.numInLongitude
-        arc_width = (cpam.maxRadius - cpam.minRadius) / ccb.numInLatitude
-        # Find the nearest back edge with the a_min,
-        # in case it is negative value,
-        # or the a_max exceeds 360 degrees.
-        offset = a_min // arc_length
+            # Center of the ring
+            cx = self.width / 2
+            cy = self.height / 2
 
-        # The draw.arc box means the ring NEVER exceed the box,
-        # or, the arc_width grows inside.
-        # The r refers the bounding box size of the "narrow" arc block.
-        # The angle refers the start angle of the arc block.
-        for j, r in enumerate(np.linspace(cpam.minRadius, cpam.maxRadius, ccb.numInLatitude, endpoint=False)):
-            w = int(arc_width)
-            box = (cx-r, cy-r, cx+r, cy+r)
+            # The arc block size
+            # Think it as the earth, the arc blocks are segmented by the longitude and latitude.
+            arc_length = 360 / ccb.numInLongitude
+            arc_width = (cpam.maxRadius - cpam.minRadius) / ccb.numInLatitude
+            # Find the nearest back edge with the a_min,
+            # in case it is negative value,
+            # or the a_max exceeds 360 degrees.
+            offset = a_min // arc_length
 
-            # Draw the arc blocks one-by-one with DIFFERENT colors
-            for angle in np.linspace(0, 360, ccb.numInLongitude, endpoint=False):
-                angle += offset * arc_length
-                i = angle // arc_length
+            # The draw.arc box means the ring NEVER exceed the box,
+            # or, the arc_width grows inside.
+            # The r refers the bounding box size of the "narrow" arc block.
+            # The angle refers the start angle of the arc block.
+            for j, r in enumerate(np.linspace(cpam.minRadius, cpam.maxRadius, ccb.numInLatitude, endpoint=False)):
+                w = int(arc_width)
+                box = (cx-r, cy-r, cx+r, cy+r)
 
-                # Not draw if angle exceeds a_max
-                if angle > a_max:
-                    continue
+                # Draw the arc blocks one-by-one with DIFFERENT colors
+                for angle in np.linspace(0, 360, ccb.numInLongitude, endpoint=False):
+                    angle += offset * arc_length
+                    i = angle // arc_length
 
-                # Not draw if angle belows a_min
-                if angle+arc_length < a_min:
-                    continue
+                    # Not draw if angle exceeds a_max
+                    if angle > a_max:
+                        continue
 
-                # Setup start and end angles with arc blocks INSIDE spin
-                start = angle
-                end = angle + arc_length
+                    # Not draw if angle belows a_min
+                    if angle+arc_length < a_min:
+                        continue
 
-                # Shrink end if front edge exceeds
-                if angle + arc_length > a_max:
-                    end = a_max
+                    # Setup start and end angles with arc blocks INSIDE spin
+                    start = angle
+                    end = angle + arc_length
 
-                # Increase start if tail edge exceeds
-                if angle < a_min:
-                    start = a_min
+                    # Shrink end if front edge exceeds
+                    if angle + arc_length > a_max:
+                        end = a_max
 
-                if i % 2 == j % 2:
-                    fill = (v, v, v, 255)
-                else:
-                    fill = (u, u, u, 255)
-                draw.arc(
-                    box, start=start, end=end, width=w, fill=fill)
+                    # Increase start if tail edge exceeds
+                    if angle < a_min:
+                        start = a_min
 
-            if self.debug:
-                draw.arc(
-                    box, start=a_min, end=a_max, width=2, fill=config.colors.debugColor)
+                    if i % 2 == j % 2:
+                        fill = (v, v, v, 255)
+                    else:
+                        fill = (u, u, u, 255)
+                    draw.arc(
+                        box, start=start, end=end, width=w, fill=fill)
+
+                # Draw the debug curves
+                if self.debug:
+                    draw.arc(
+                        box, start=a_min, end=a_max, width=2, fill=config.colors.debugColor)
+
+            return
+
+        if t > 0:
+            # Report if the new circles is started.
+            circles = int(np.ceil(t / cpam.duration))
+            if circles > self.circles:
+                self.circles = circles
+                logger.info(f'Circles changed to {self.circles}')
+            # Draw the polar.
+            draw_polar()
 
         # Put the focus point on the center
         if config.focusPoint.toggled:

@@ -17,25 +17,30 @@ control:
   quitKeyName: Key_Escape
   startKeyName: Key_S
 
+temporalDesign:
+  startOffset: 10 # seconds
+
 checkboxTexture:
-  colored: false # boolean
+  colored: false # boolean, not used yet
   numInLatitude: 12 # number
   numInLongitude: 20 # number
-  flickingRate: 0.5 # Hz
+  flickingRate: 4 # Hz
 
 eccentricityMapping:
   width: 60 # pixels
-  duration: 10 # seconds
+  duration: 40 # seconds
   minRadius: 20 # pixels
   maxRadius: 400 # pixels
-  repeat: 2 # times
+  repeat: 1 # times, not used yet
+  background: [0, 0, 0, 255]
 
 polarAngleMapping:
   width: 45 # degrees
   duration: 10 # seconds
   minRadius: 20 # pixels
   maxRadius: 400 # pixels
-  repeat: 2 # times
+  repeat: 2 # times, not used yet
+  background: [0, 0, 0, 255]
 
 focusPoint:
   toggled: true
@@ -44,9 +49,12 @@ focusPoint:
   tMin: 5
   tMax: 10
   colors:
-    - "#A00A"
-    - "#0A0A"
-    - "#00AA"
+    - "#E22"
+    - "#2E2"
+    - "#22E"
+    - "#E2E"
+    - "#EE2"
+    - "#EEE"
 
 colors:
   debugColor: "#D0104C"

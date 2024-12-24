@@ -41,8 +41,8 @@ parser.add_argument('-w', '--wait',
 namespace = parser.parse_args()
 logger.info(f'Using namespace: {namespace}')
 
-assert not all(
-    (namespace.eccentricity, namespace.polarAngle)), 'Can not use both --eccentricity and --polarAngle'
+assert not all((namespace.eccentricity, namespace.polarAngle)), 'Can not use both --eccentricity and --polarAngle'  # noqa
+assert any((namespace.eccentricity, namespace.polarAngle)), 'Must either use --eccentricity or --polarAngle'  # noqa
 
 # %% ---- 2024-10-28 ------------------------
 # Play ground
