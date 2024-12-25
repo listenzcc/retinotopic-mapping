@@ -289,6 +289,7 @@ class SequenceStimuli(OnScreenDisplay):
         return
 
     def get_alpha(self, t):
+        '''Return 0-255 alpha value for the given time t.'''
         beta = 50
         t %= self.trial_length
 
@@ -337,15 +338,12 @@ class SequenceStimuli(OnScreenDisplay):
     def generate_img(self, t: float) -> Image.Image:
         '''Implementation of the generate_img method'''
 
-        # ? Maybe setup with
-        background_rgba = 100
-
         # Check the experiment progress.
         idx = int(t // self.trial_length)
 
         def get_and_prepare_img(idx, t):
             # Get the image and its name.
-            img = self.imgs[idx % len(self.imgs)].copy()
+            # img = self.imgs[idx % len(self.imgs)].copy()
             name = self.names[idx % len(self.names)]
 
             # Trigger it out when the image displays on the screen.
@@ -355,12 +353,19 @@ class SequenceStimuli(OnScreenDisplay):
 
             # Get and set the img's alpha channel.
             alpha = self.get_alpha(t)
-            img.putalpha(alpha)
+            r = alpha / 255
+
+            # Now it only works with pure black background.
+            mat = np.array(img).astype(np.float32)
+            mat *= r
+            img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+            img.putalpha(255)
 
             # Paste the image into the center.
-            mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-            img_backer = Image.fromarray(mat.astype(
-                np.uint8)+background_rgba, mode='RGBA')
+            # The color is initialized from the imgSequence.background (r, g, b, a).
+            mat = np.zeros((self.height, self.width, 4))
+            mat[:, :] = CONFIG.imgSequence.background
+            img_backer = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
             img_backer.paste(img, self.img_offsets)
 
             return img_backer, name
@@ -368,9 +373,9 @@ class SequenceStimuli(OnScreenDisplay):
         def mk_bg_img():
             # Generate the image and its drawing context.
             # The initializing color is (0, 0, 0, 0) for all the pixels
-            mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-            bg_img = Image.fromarray(mat.astype(
-                np.uint8)+background_rgba, mode='RGBA')
+            mat = np.zeros((self.height, self.width, 4))
+            mat[:, :] = CONFIG.imgSequence.background
+            bg_img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
             return bg_img
 
         # Get the img and its background img

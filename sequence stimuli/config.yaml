@@ -29,6 +29,7 @@ imgSequence:
   paddingBefore: 0 # seconds
   paddingAfter: 1 # seconds
   duration: 3 # seconds
+  background: [0, 0, 0, 255]
 
 focusPoint:
   toggled: true
