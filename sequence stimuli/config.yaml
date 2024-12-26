@@ -5,14 +5,14 @@ project:
 
 display:
   screenId: 0 # screen id: 0, 1, ...
-  # width: 1920 # pixels
-  # height: 1080 # pixels
-  width: 800
-  height: 600
+  width: 1920 # pixels
+  height: 1080 # pixels
+  # width: 1366
+  # height: 768
 
 imgSize:
-  width: 400 # pixels
-  height: 400 # pixels
+  width: 600 # pixels
+  height: 600 # pixels
 
 extensions:
   - .jpg
@@ -20,6 +20,9 @@ extensions:
 
 prompt:
   img: img/prompt.jpg
+
+temporalDesign:
+  startOffset: 10 # seconds
 
 control:
   quitKeyName: Key_Escape
@@ -38,9 +41,12 @@ focusPoint:
   tMin: 5
   tMax: 10
   colors:
-    - "#A00A"
-    - "#0A0A"
-    - "#00AA"
+    - "#E22"
+    - "#2E2"
+    - "#22E"
+    - "#E2E"
+    - "#EE2"
+    - "#EEE"
 
 colors:
   debugColor: "#D0104C"

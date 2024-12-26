@@ -172,10 +172,13 @@ class OnScreenDisplay(object):
         tic = time.time()
         i = 0
         loop_id = f'Loop-{np.random.random():.4f}-{time.time():.8f}'
-        logger.debug(f'Start running: {loop_id}')
+        logger.info(f'Start running: {loop_id}')
         while self.running:
             i += 1
             t = time.time()-tic
+
+            # Offset the time
+            t -= CONFIG.temporalDesign.startOffset
 
             # Generate the frame img
             img = self.generate_img(t)
@@ -339,43 +342,54 @@ class SequenceStimuli(OnScreenDisplay):
         '''Implementation of the generate_img method'''
 
         # Check the experiment progress.
-        idx = int(t // self.trial_length)
+        if t > 0:
+            idx = int(t // self.trial_length)
+        else:
+            idx = None
 
         def get_and_prepare_img(idx, t):
-            # Get the image and its name.
-            # img = self.imgs[idx % len(self.imgs)].copy()
-            name = self.names[idx % len(self.names)]
+            if t > 0:
+                # Get the image and its name.
+                img = self.imgs[idx % len(self.imgs)].copy()
+                name = self.names[idx % len(self.names)]
 
-            # Trigger it out when the image displays on the screen.
-            if idx > self.idx:
-                self.idx = idx
-                logger.debug(f'Display img: {idx} | {name}')
+                # Trigger it out when the image displays on the screen.
+                if idx > self.idx:
+                    self.idx = idx
+                    logger.info(f'Display img: {idx} | {name}')
 
-            # Get and set the img's alpha channel.
-            alpha = self.get_alpha(t)
-            r = alpha / 255
+                # Get and set the img's alpha channel.
+                alpha = self.get_alpha(t) / 255
 
-            # Now it only works with pure black background.
-            mat = np.array(img).astype(np.float32)
-            mat *= r
-            img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
-            img.putalpha(255)
+                # Now it only works with pure black background.
+                mat = np.array(img).astype(np.float32)
+                mat *= alpha
+                img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+                img.putalpha(255)
 
-            # Paste the image into the center.
-            # The color is initialized from the imgSequence.background (r, g, b, a).
-            mat = np.zeros((self.height, self.width, 4))
-            mat[:, :] = CONFIG.imgSequence.background
-            img_backer = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
-            img_backer.paste(img, self.img_offsets)
+                # Paste the image into the center.
+                # The color is initialized from the imgSequence.background (r, g, b, a).
+                # mat = np.zeros((self.height, self.width, 4))
+                # mat[:, :] = CONFIG.imgSequence.background
+                # img_backer = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+                img_backer = Image.new(
+                    'RGBA', (self.width, self.height), (0, 0, 0, 255))
+                img_backer.paste(img, self.img_offsets)
+            else:
+                img_backer = Image.new(
+                    'RGBA', (self.width, self.height), (0, 0, 0, 255))
+                name = 'Not start yet'
 
             return img_backer, name
 
         def mk_bg_img():
             # Generate the image and its drawing context.
             # The initializing color is (0, 0, 0, 0) for all the pixels
-            mat = np.zeros((self.height, self.width, 4))
-            mat[:, :] = CONFIG.imgSequence.background
-            bg_img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+            # mat = np.zeros((self.height, self.width, 4))
+            # mat[:, :] = CONFIG.imgSequence.background
+            # bg_img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+            bg_img = Image.new(
+                'RGBA', (self.width, self.height), (0, 0, 0, 255))
             return bg_img
 
         # Get the img and its background img
