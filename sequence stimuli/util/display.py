@@ -356,7 +356,8 @@ class SequenceStimuli(OnScreenDisplay):
                 # Trigger it out when the image displays on the screen.
                 if idx > self.idx:
                     self.idx = idx
-                    logger.info(f'Display img: {idx} | {name}')
+                    logger.info(
+                        f'Display img: {idx} | {len(self.imgs)} | {name}')
 
                 # Get and set the img's alpha channel.
                 alpha = self.get_alpha(t) / 255

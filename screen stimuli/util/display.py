@@ -292,9 +292,11 @@ class EccentricityMapping(OnScreenDisplay):
 
         # Generate the image and its drawing context.
         # The initializing color is (0, 0, 0, 0) for all the pixels
-        mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        mat[:, :] = cem.background
-        img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+        # mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+        # mat[:, :] = cem.background
+        # img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+        img = Image.new('RGBA', (self.width, self.height),
+                        tuple(cem.background))
         draw = ImageDraw.Draw(img)
 
         def draw_ring():
@@ -452,9 +454,11 @@ class PolarAngleMapping(OnScreenDisplay):
 
         # Generate the image and its drawing context.
         # The initializing color is (0, 0, 0, 0) for all the pixels
-        mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        mat[:, :] = cpam.background
-        img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+        # mat = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+        # mat[:, :] = cpam.background
+        # img = Image.fromarray(mat.astype(np.uint8), mode='RGBA')
+        img = Image.new('RGBA', (self.width, self.height),
+                        tuple(cpam.background))
         draw = ImageDraw.Draw(img)
 
         def draw_polar():

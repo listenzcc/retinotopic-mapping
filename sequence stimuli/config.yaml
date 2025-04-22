@@ -11,8 +11,8 @@ display:
   # height: 768
 
 imgSize:
-  width: 600 # pixels
-  height: 600 # pixels
+  width: 700 # pixels
+  height: 700 # pixels
 
 extensions:
   - .jpg
@@ -22,7 +22,7 @@ prompt:
   img: img/prompt.jpg
 
 temporalDesign:
-  startOffset: 10 # seconds
+  startOffset: 8 # seconds
 
 control:
   quitKeyName: Key_Escape

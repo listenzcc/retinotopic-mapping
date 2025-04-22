@@ -18,7 +18,7 @@ control:
   startKeyName: Key_S
 
 temporalDesign:
-  startOffset: 10 # seconds
+  startOffset: 8 # seconds
 
 checkboxTexture:
   colored: false # boolean, not used yet
